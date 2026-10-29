@@ -26,6 +26,12 @@ input{
     box-sizing:border-box;
 }
 
+input[type="checkbox"],
+input[type="radio"]{
+    width:auto;
+    margin:0 8px 0 0;
+}
+
 button{
     padding:10px;
     margin:5px;
@@ -53,6 +59,15 @@ td,th{
     border:1px solid #ccc;
     padding:8px;
     text-align:center;
+}
+
+tr.ausgewaehlt{
+    background-color:#fff2a8;
+}
+
+.listenTrenner th{
+    background-color:#eee;
+    text-align:left;
 }
 
 #reader{
@@ -136,6 +151,12 @@ td,th{
     CSV Export
 </button>
 
+<button id="csvHochladenButton" type="button">
+    CSV-Liste hochladen
+</button>
+<input id="csvDatei" type="file" accept=".csv,text/csv" hidden>
+<span id="csvStatus" role="status" aria-live="polite"></span>
+
 <button id="lichtButton" type="button" disabled>
     Licht nicht verfügbar
 </button>
@@ -183,11 +204,40 @@ td,th{
     </button>
 </div>
 
+<dialog id="csvImportDialog" aria-labelledby="csvImportTitel">
+    <form id="csvImportForm">
+        <h2 id="csvImportTitel">CSV-Liste übernehmen</h2>
+        <p id="csvImportZusammenfassung"></p>
+        <fieldset>
+            <legend>Wie soll die aktuelle Liste behandelt werden?</legend>
+            <label>
+                <input type="radio" name="importVerhalten" value="ersetzen" checked>
+                Ersetzen: Reihenfolge aus der CSV verwenden
+            </label>
+            <label>
+                <input type="radio" name="importVerhalten" value="ergaenzen">
+                Ergänzen: vorhandene passende Reihenfolge beibehalten, neue Barcodes anhängen
+            </label>
+        </fieldset>
+        <label>
+            <input id="bestaendeUebernehmen" type="checkbox" checked>
+            Vorhandene Bestände gleicher Barcodes übernehmen
+        </label>
+        <div>
+            <button type="button" id="csvImportAbbrechenButton">Abbrechen</button>
+            <button type="submit">Liste übernehmen</button>
+        </div>
+    </form>
+</dialog>
+
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script>
 
 let artikel = JSON.parse(localStorage.getItem("artikel")) || [];
+let importAktiv = localStorage.getItem("importAktiv") === "true";
+let ausstehenderBarcode = "";
+let ausstehendeImportBarcodes = null;
 
 const statistikSpeicherSchluessel = "inventurStatistik";
 
@@ -317,17 +367,34 @@ function hinzufuegen(){
 
     if(vorhanden){
         vorhanden.bestand = bestand;
+
+        if(importAktiv){
+            artikel.splice(artikel.indexOf(vorhanden), 1);
+            if(vorhanden.importiert){
+                const letztesImportElement = artikel.reduce(
+                    (letzterIndex, artikelEintrag, index) =>
+                        artikelEintrag.importiert ? index : letzterIndex,
+                    -1
+                );
+                artikel.splice(letztesImportElement + 1, 0, vorhanden);
+            }
+            else{
+                artikel.push(vorhanden);
+            }
+        }
     }
     else{
-        artikel.push({
+        vorhanden = {
             barcode: barcode,
-            bestand: bestand
-        });
+            bestand: bestand,
+            importiert: false
+        };
+        artikel.push(vorhanden);
     }
 
     statistikErfassen(barcode, bestand);
     localStorage.setItem("artikel", JSON.stringify(artikel));
-    
+    ausstehenderBarcode = "";
     anzeigeAktualisieren();
 
     document.getElementById("barcode").value = "";
@@ -335,6 +402,7 @@ function hinzufuegen(){
     bestandHinweisAusblenden();
     bestandAusstehend = false;
     document.getElementById("bestand").disabled = true;
+    document.getElementById("csvHochladenButton").disabled = false;
     scannerFreigeben();
 }
 
@@ -345,32 +413,239 @@ function anzeigeAktualisieren(){
 
     daten.replaceChildren();
 
-    artikel.forEach((a, index) => {
+    const importEintraege = importAktiv
+        ? artikel.filter(a => a.importiert)
+        : artikel;
+    const nichtImportEintraege = importAktiv
+        ? artikel.filter(a => !a.importiert)
+        : [];
 
+    function zeileErstellen(a){
         const zeile = document.createElement("tr");
         const barcodeZelle = document.createElement("td");
         const bestandZelle = document.createElement("td");
         const aktionZelle = document.createElement("td");
         const loeschenButton = document.createElement("button");
 
+        if(a.barcode === ausstehenderBarcode){
+            zeile.className = "ausgewaehlt";
+        }
+
         barcodeZelle.textContent = a.barcode;
         bestandZelle.textContent = a.bestand;
         loeschenButton.textContent = "Löschen";
-        loeschenButton.addEventListener("click", () => loeschen(index));
+        loeschenButton.addEventListener(
+            "click",
+            () => loeschen(artikel.indexOf(a))
+        );
 
         aktionZelle.appendChild(loeschenButton);
         zeile.append(barcodeZelle, bestandZelle, aktionZelle);
         daten.appendChild(zeile);
-    });
+    }
+
+    importEintraege.forEach(zeileErstellen);
+
+    if(importAktiv && nichtImportEintraege.length > 0){
+        const trenner = document.createElement("tr");
+        const trennerZelle = document.createElement("th");
+        trenner.className = "listenTrenner";
+        trennerZelle.colSpan = 3;
+        trennerZelle.textContent = "Nicht in Importliste";
+        trenner.appendChild(trennerZelle);
+        daten.appendChild(trenner);
+        nichtImportEintraege.forEach(zeileErstellen);
+    }
 }
 
 function loeschen(index){
+
+    if(artikel[index] &&
+        artikel[index].barcode === ausstehenderBarcode){
+        ausstehenderBarcode = "";
+    }
 
     artikel.splice(index, 1);
 
     localStorage.setItem("artikel", JSON.stringify(artikel));
     anzeigeAktualisieren();
 }
+
+function csvBarcodesLesen(csvText){
+
+    const zeilen = csvText
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .filter(zeile => zeile.trim() !== "");
+
+    if(zeilen.length === 0){
+        throw new Error("Die CSV-Datei ist leer.");
+    }
+
+    const trenner = zeilen[0].includes(";")
+        ? ";"
+        : zeilen[0].includes(",")
+            ? ","
+            : "\t";
+    const barcodes = [];
+    const gesehen = new Set();
+    const fehlerhafteZeilen = [];
+
+    zeilen.forEach((zeile, index) => {
+        const rohwert = zeile.split(trenner)[0].trim();
+        const barcode = rohwert.replace(/^"(.*)"$/, "$1").trim();
+
+        if(index === 0 && /^(artikelnummer|barcode|ean)$/i.test(barcode)){
+            return;
+        }
+
+        if(!/^\d{8}$/.test(barcode)){
+            fehlerhafteZeilen.push(index + 1);
+            return;
+        }
+
+        if(!gesehen.has(barcode)){
+            gesehen.add(barcode);
+            barcodes.push(barcode);
+        }
+    });
+
+    if(fehlerhafteZeilen.length > 0){
+        throw new Error(
+            "Ungültige Barcodewerte in CSV-Zeile(n): " +
+            fehlerhafteZeilen.join(", ") +
+            ". Erwartet werden genau 8 Ziffern pro Zeile."
+        );
+    }
+
+    if(barcodes.length === 0){
+        throw new Error("Die CSV-Datei enthält keine Barcodes.");
+    }
+
+    return barcodes;
+}
+
+document
+.getElementById("csvHochladenButton")
+.addEventListener("click", function(){
+    document.getElementById("csvDatei").click();
+});
+
+document
+.getElementById("csvDatei")
+.addEventListener("change", async function(){
+
+    const datei = this.files[0];
+    const csvStatus = document.getElementById("csvStatus");
+    csvStatus.textContent = "";
+
+    if(!datei){
+        return;
+    }
+
+    try{
+        ausstehendeImportBarcodes = csvBarcodesLesen(await datei.text());
+        document.getElementById("csvImportZusammenfassung").textContent =
+            ausstehendeImportBarcodes.length +
+            " eindeutige Barcodes wurden erkannt. " +
+            "Barcodes aus der aktuellen Liste, die nicht in der Datei stehen, " +
+            "bleiben unter „Nicht in Importliste“ erhalten. " +
+            "Vorhandene Bestände gleicher Barcodes können übernommen werden.";
+        document.getElementById("bestaendeUebernehmen").checked = true;
+        document.getElementById("csvImportDialog").showModal();
+    }
+    catch(err){
+        ausstehendeImportBarcodes = null;
+        console.error("CSV-Liste konnte nicht gelesen werden:", err);
+        csvStatus.textContent = err.message ||
+            "CSV-Datei konnte nicht gelesen werden.";
+    }
+    finally{
+        this.value = "";
+    }
+});
+
+document
+.getElementById("csvImportAbbrechenButton")
+.addEventListener("click", function(){
+    ausstehendeImportBarcodes = null;
+    document.getElementById("csvImportDialog").close();
+});
+
+document
+.getElementById("csvImportForm")
+.addEventListener("submit", function(event){
+    event.preventDefault();
+
+    if(!ausstehendeImportBarcodes){
+        return;
+    }
+
+    const modus =
+        document.querySelector('input[name="importVerhalten"]:checked').value;
+    const bestaendeUebernehmen =
+        document.getElementById("bestaendeUebernehmen").checked;
+    const alteEintraege = new Map();
+    artikel.forEach(eintrag => {
+        const vorhanden = alteEintraege.get(eintrag.barcode);
+        if(vorhanden){
+            vorhanden.bestand += eintrag.bestand;
+            vorhanden.importiert =
+                vorhanden.importiert || eintrag.importiert;
+        }
+        else{
+            alteEintraege.set(eintrag.barcode, {...eintrag});
+        }
+    });
+    const neueBarcodes = new Set(ausstehendeImportBarcodes);
+
+    const importEintraege = new Map(ausstehendeImportBarcodes.map(barcode => {
+        const vorhanden = alteEintraege.get(barcode);
+        return [barcode, {
+            barcode: barcode,
+            bestand: vorhanden && bestaendeUebernehmen
+                ? vorhanden.bestand
+                : 0,
+            importiert: true
+        }];
+    }));
+
+    let geordneteImportBarcodes = ausstehendeImportBarcodes;
+    if(modus === "ergaenzen"){
+        const zuvorImportiert = [];
+        const bereitsGeordnet = new Set();
+        artikel.forEach(eintrag => {
+            if(eintrag.importiert &&
+                neueBarcodes.has(eintrag.barcode) &&
+                !bereitsGeordnet.has(eintrag.barcode)){
+                bereitsGeordnet.add(eintrag.barcode);
+                zuvorImportiert.push(eintrag.barcode);
+            }
+        });
+        geordneteImportBarcodes = zuvorImportiert.concat(
+            ausstehendeImportBarcodes.filter(
+                barcode => !bereitsGeordnet.has(barcode)
+            )
+        );
+    }
+
+    const nichtImportEintraege = Array.from(alteEintraege.values())
+        .filter(eintrag => !neueBarcodes.has(eintrag.barcode))
+        .map(eintrag => ({...eintrag, importiert:false}));
+
+    artikel = geordneteImportBarcodes
+        .map(barcode => importEintraege.get(barcode))
+        .concat(nichtImportEintraege);
+    importAktiv = true;
+    localStorage.setItem("artikel", JSON.stringify(artikel));
+    localStorage.setItem("importAktiv", "true");
+    ausstehenderBarcode = "";
+    ausstehendeImportBarcodes = null;
+    anzeigeAktualisieren();
+    document.getElementById("csvImportDialog").close();
+    document.getElementById("csvStatus").textContent =
+        "CSV-Liste wurde übernommen.";
+});
 
 function csvExport(){
 
@@ -437,7 +712,10 @@ document
     }
 
     artikel = [];
+    importAktiv = false;
+    ausstehenderBarcode = "";
     localStorage.removeItem("artikel");
+    localStorage.removeItem("importAktiv");
     anzeigeAktualisieren();
     alleEintraegeLoeschenDialog.close();
 });
@@ -540,10 +818,17 @@ document
     this.value = this.value.replace(/\D/g, "").slice(0, 8);
 
     if(/^\d{8}$/.test(this.value)){
+        bestandAusstehend = true;
+        ausstehenderBarcode = this.value;
+        document.getElementById("csvHochladenButton").disabled = true;
+        anzeigeAktualisieren();
         bestandseingabeVorbereiten(this.value);
     }
     else{
         bestandAusstehend = false;
+        ausstehenderBarcode = "";
+        document.getElementById("csvHochladenButton").disabled = false;
+        anzeigeAktualisieren();
         bestandHinweisAusblenden();
         document.getElementById("bestand").disabled = true;
     }
@@ -571,8 +856,11 @@ function scannerErfolg(decodedText){
     }
 
     bestandAusstehend = true;
+    ausstehenderBarcode = barcode;
+    document.getElementById("csvHochladenButton").disabled = true;
     scannerSperren();
     document.getElementById("barcode").value = barcode;
+    anzeigeAktualisieren();
     bestandseingabeVorbereiten(barcode);
 }
 
