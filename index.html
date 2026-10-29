@@ -37,6 +37,11 @@ td,th{
 #reader{
     max-width:400px;
 }
+
+#csvVorLoeschen{
+    width:auto;
+    margin:0 8px 0 0;
+}
 </style>
 </head>
 
@@ -81,6 +86,25 @@ td,th{
 
     </tbody>
 </table>
+
+<button id="alleEintraegeLoeschenButton" type="button">
+    Alle Einträge löschen
+</button>
+
+<dialog id="alleEintraegeLoeschenDialog" aria-labelledby="loeschenTitel">
+    <form id="alleEintraegeLoeschenForm">
+        <h2 id="loeschenTitel">Alle Einträge löschen?</h2>
+        <p>Diese Aktion löscht die gesamte gespeicherte Liste und kann nicht rückgängig gemacht werden.</p>
+        <label>
+            <input id="csvVorLoeschen" type="checkbox">
+            Vor dem Löschen eine CSV-Datei herunterladen
+        </label>
+        <div>
+            <button type="button" id="loeschenAbbrechenButton">Abbrechen</button>
+            <button type="submit">Alle Einträge endgültig löschen</button>
+        </div>
+    </form>
+</dialog>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -205,6 +229,37 @@ function csvExport(){
 
     URL.revokeObjectURL(link.href);
 }
+
+const alleEintraegeLoeschenDialog =
+    document.getElementById("alleEintraegeLoeschenDialog");
+
+document
+.getElementById("alleEintraegeLoeschenButton")
+.addEventListener("click", function(){
+    document.getElementById("csvVorLoeschen").checked = false;
+    alleEintraegeLoeschenDialog.showModal();
+});
+
+document
+.getElementById("loeschenAbbrechenButton")
+.addEventListener("click", function(){
+    alleEintraegeLoeschenDialog.close();
+});
+
+document
+.getElementById("alleEintraegeLoeschenForm")
+.addEventListener("submit", function(event){
+    event.preventDefault();
+
+    if(document.getElementById("csvVorLoeschen").checked){
+        csvExport();
+    }
+
+    artikel = [];
+    localStorage.removeItem("artikel");
+    anzeigeAktualisieren();
+    alleEintraegeLoeschenDialog.close();
+});
 
 document
 .getElementById("bestand")
