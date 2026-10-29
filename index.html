@@ -185,7 +185,11 @@ html5QrCode.start(
     { facingMode: "environment" },
     {
         fps: 10,
-        qrbox: 250
+        qrbox: 250,
+        formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+        ],
     },
     scannerErfolg
 ).catch(err => {
