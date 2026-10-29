@@ -179,17 +179,18 @@ function scannerErfolg(decodedText){
 }
 
 const html5QrCode =
-    new Html5Qrcode("reader");
+    new Html5Qrcode("reader", {
+        formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+        ],
+    });
 
 html5QrCode.start(
     { facingMode: "environment" },
     {
         fps: 20,
         qrbox: 250,
-        formatsToSupport: [
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-        ],
     },
     scannerErfolg
 ).catch(err => {
