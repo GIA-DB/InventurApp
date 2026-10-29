@@ -137,7 +137,7 @@ function hinzufuegen(){
         artikel.find(a => a.barcode === barcode);
 
     if(vorhanden){
-        vorhanden.bestand += bestand;
+        vorhanden.bestand = bestand;
     }
     else{
         artikel.push({
@@ -285,6 +285,25 @@ function scannerFreigeben(){
     }
 }
 
+function bestandseingabeVorbereiten(barcode){
+
+    bestandAusstehend = true;
+
+    const vorhanden = artikel.find(a => a.barcode === barcode);
+
+    if(vorhanden && Number(vorhanden.bestand) > 0){
+        alert(
+            "Für Barcode " + barcode +
+            " ist bereits ein Bestand von " + vorhanden.bestand +
+            " vorhanden. Der neue Bestand ersetzt diesen Wert."
+        );
+    }
+
+    const bestandFeld = document.getElementById("bestand");
+    bestandFeld.disabled = false;
+    bestandFeld.focus();
+}
+
 async function lichtUmschalten(){
 
     if(!blitzlicht){
@@ -331,10 +350,7 @@ document
     this.value = this.value.replace(/\D/g, "").slice(0, 8);
 
     if(/^\d{8}$/.test(this.value)){
-        bestandAusstehend = true;
-        const bestandFeld = document.getElementById("bestand");
-        bestandFeld.disabled = false;
-        bestandFeld.focus();
+        bestandseingabeVorbereiten(this.value);
     }
     else{
         bestandAusstehend = false;
@@ -366,10 +382,7 @@ function scannerErfolg(decodedText){
     bestandAusstehend = true;
     scannerSperren();
     document.getElementById("barcode").value = barcode;
-
-    const bestandFeld = document.getElementById("bestand");
-    bestandFeld.disabled = false;
-    bestandFeld.focus();
+    bestandseingabeVorbereiten(barcode);
 }
 
 const html5QrCode =
