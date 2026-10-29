@@ -136,12 +136,17 @@ td,th{
     CSV Export
 </button>
 
+<button id="scannerModusButton" type="button">
+    Handscanner
+</button>
+
 <button id="lichtButton" type="button" disabled>
     Licht nicht verfügbar
 </button>
 </div>
 
 <span id="lichtStatus" aria-live="polite"></span>
+<span id="scannerStatus" role="status" aria-live="polite"></span>
 
 <table>
     <thead>
@@ -272,6 +277,8 @@ function statistikErfassen(barcode, bestand){
 let bestandAusstehend = false;
 let blitzlicht = null;
 let lichtEingeschaltet = false;
+let scannerModus = "kamera";
+let kameraLaeuft = false;
 let bestandHinweisTimeout = null;
 let scannerFreigabeTimeout = null;
 let scannerSperrzeitAktiv = false;
@@ -351,7 +358,14 @@ function hinzufuegen(){
     bestandHinweisAusblenden();
     bestandAusstehend = false;
     document.getElementById("bestand").disabled = true;
-    scannerFreigebenNachErfassung();
+    document.getElementById("scannerModusButton").disabled = false;
+
+    if(scannerModus === "handscanner"){
+        document.getElementById("barcode").focus();
+    }
+    else{
+        scannerFreigebenNachErfassung();
+    }
 }
 
 function anzeigeAktualisieren(){
@@ -493,7 +507,8 @@ function scannerFreigeben(){
         return;
     }
 
-    if(html5QrCode.getState() === Html5QrcodeScannerState.PAUSED){
+    if(kameraLaeuft &&
+        html5QrCode.getState() === Html5QrcodeScannerState.PAUSED){
         html5QrCode.resume();
     }
 }
@@ -537,6 +552,47 @@ function bestandseingabeVorbereiten(barcode){
     bestandFeld.focus();
 }
 
+function lichtSteuerungZuruecksetzen(){
+
+    blitzlicht = null;
+    lichtEingeschaltet = false;
+
+    const lichtButton = document.getElementById("lichtButton");
+    lichtButton.disabled = true;
+    lichtButton.textContent = "Licht nicht verfügbar";
+    lichtButton.removeAttribute("aria-pressed");
+    document.getElementById("lichtStatus").textContent = "";
+}
+
+function lichtSteuerungInitialisieren(){
+
+    const lichtButton = document.getElementById("lichtButton");
+    const lichtStatus = document.getElementById("lichtStatus");
+
+    try{
+        blitzlicht = html5QrCode
+            .getRunningTrackCameraCapabilities()
+            .torchFeature();
+
+        if(blitzlicht.isSupported()){
+            lichtEingeschaltet = blitzlicht.value() === true;
+            lichtButton.disabled = false;
+            lichtButton.textContent = lichtEingeschaltet
+                ? "Licht ausschalten"
+                : "Licht einschalten";
+            lichtButton.setAttribute("aria-pressed", String(lichtEingeschaltet));
+        }
+        else{
+            lichtStatus.textContent = "Dieses Gerät unterstützt kein Kameralicht.";
+        }
+    }
+    catch(err){
+        lichtSteuerungZuruecksetzen();
+        console.error("Kameralicht-Funktion konnte nicht ermittelt werden:", err);
+        lichtStatus.textContent = "Kameralicht ist nicht verfügbar.";
+    }
+}
+
 async function lichtUmschalten(){
 
     if(!blitzlicht){
@@ -569,10 +625,115 @@ async function lichtUmschalten(){
 document
 .getElementById("lichtButton")
 .addEventListener("click", lichtUmschalten);
+
+async function scannerModusUmschalten(){
+
+    if(bestandAusstehend){
+        return;
+    }
+
+    const modusButton = document.getElementById("scannerModusButton");
+    const barcodeFeld = document.getElementById("barcode");
+    const scannerStatus = document.getElementById("scannerStatus");
+
+    modusButton.disabled = true;
+    scannerStatus.textContent = "";
+
+    if(scannerModus === "kamera"){
+        try{
+            if(kameraLaeuft){
+                await html5QrCode.stop();
+                kameraLaeuft = false;
+            }
+
+            lichtSteuerungZuruecksetzen();
+            scannerModus = "handscanner";
+            document.getElementById("reader").hidden = true;
+            barcodeFeld.value = "";
+            barcodeFeld.setAttribute("inputmode", "none");
+            modusButton.textContent = "Kamera";
+            modusButton.disabled = false;
+            scannerStatus.textContent =
+                "Handscanner aktiv. Barcode scannen.";
+            barcodeFeld.focus();
+        }
+        catch(err){
+            console.error("Kamera konnte nicht beendet werden:", err);
+            modusButton.disabled = false;
+            scannerStatus.textContent =
+                "Kameramodus konnte nicht gewechselt werden.";
+        }
+
+        return;
+    }
+
+    barcodeFeld.setAttribute("inputmode", "numeric");
+    await kameraStarten();
+}
+
+async function kameraStarten(){
+
+    const modusButton = document.getElementById("scannerModusButton");
+    const scannerStatus = document.getElementById("scannerStatus");
+    document.getElementById("reader").hidden = false;
+    modusButton.disabled = true;
+    scannerStatus.textContent = "";
+
+    try{
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            {
+                fps: 20,
+                qrbox: qrboxFunction,
+            },
+            scannerErfolg
+        );
+
+        kameraLaeuft = true;
+        scannerModus = "kamera";
+        modusButton.textContent = "Handscanner";
+        modusButton.disabled = bestandAusstehend;
+        readerElement.appendChild(bestandHinweis);
+        const video = readerElement.querySelector("video");
+
+        if(video){
+            kameraLayoutAktualisieren(video);
+        }
+
+        lichtSteuerungInitialisieren();
+
+        if(scannerSperrzeitAktiv){
+            scannerSperren(false);
+        }
+        else if(bestandAusstehend ||
+            document.activeElement === document.getElementById("barcode")){
+            scannerSperren();
+        }
+    }
+    catch(err){
+        console.error("Kamera konnte nicht gestartet werden:", err);
+        document.getElementById("reader").hidden = true;
+        scannerModus = "handscanner";
+        modusButton.textContent = "Kamera";
+        modusButton.disabled = bestandAusstehend;
+        document.getElementById("barcode").setAttribute("inputmode", "none");
+        scannerStatus.textContent =
+            "Kamera konnte nicht gestartet werden. Handscanner bleibt aktiv.";
+        lichtSteuerungZuruecksetzen();
+        document.getElementById("barcode").focus();
+    }
+}
+
+document
+.getElementById("scannerModusButton")
+.addEventListener("click", scannerModusUmschalten);
+
 document
 .getElementById("barcode")
 .addEventListener("focus", function(){
-    scannerSperren();
+    if(scannerModus === "kamera"){
+        scannerSperren();
+    }
 });
 
 document
@@ -582,11 +743,13 @@ document
     this.value = this.value.replace(/\D/g, "").slice(0, 8);
 
     if(/^\d{8}$/.test(this.value)){
+        document.getElementById("scannerModusButton").disabled = true;
         bestandseingabeVorbereiten(this.value);
     }
     else{
         bestandAusstehend = false;
         bestandHinweisAusblenden();
+        document.getElementById("scannerModusButton").disabled = false;
         document.getElementById("bestand").disabled = true;
     }
 });
@@ -602,7 +765,9 @@ document
 
 function scannerErfolg(decodedText){
 
-    if(bestandAusstehend || scannerSperrzeitAktiv){
+    if(scannerModus !== "kamera" ||
+        bestandAusstehend ||
+        scannerSperrzeitAktiv){
         return;
     }
 
@@ -613,6 +778,7 @@ function scannerErfolg(decodedText){
     }
 
     bestandAusstehend = true;
+    document.getElementById("scannerModusButton").disabled = true;
     scannerSperren();
     document.getElementById("barcode").value = barcode;
     bestandseingabeVorbereiten(barcode);
@@ -726,45 +892,7 @@ const html5QrCode =
         ],
     });
 
-html5QrCode.start(
-    { facingMode: "environment" },
-    {
-        fps: 20,
-        qrbox: qrboxFunction,
-    },
-    scannerErfolg
-).then(() => {
-    const lichtButton = document.getElementById("lichtButton");
-    const lichtStatus = document.getElementById("lichtStatus");
-    readerElement.appendChild(bestandHinweis);
-    const video = document.querySelector("#reader video");
-
-    if(video){
-        kameraLayoutAktualisieren(video);
-    }
-
-    blitzlicht = html5QrCode
-        .getRunningTrackCameraCapabilities()
-        .torchFeature();
-
-    if(blitzlicht.isSupported()){
-        lichtEingeschaltet = blitzlicht.value() === true;
-        lichtButton.disabled = false;
-        lichtButton.textContent = lichtEingeschaltet
-            ? "Licht ausschalten"
-            : "Licht einschalten";
-        lichtButton.setAttribute("aria-pressed", String(lichtEingeschaltet));
-    }
-    if(scannerSperrzeitAktiv){
-        scannerSperren(false);
-    }
-    else if(bestandAusstehend ||
-        document.activeElement === document.getElementById("barcode")){
-        scannerSperren();
-    }
-}).catch(err => {
-    console.error(err);
-});
+kameraStarten();
 
 </script>
 
