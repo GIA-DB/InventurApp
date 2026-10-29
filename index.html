@@ -49,10 +49,10 @@ td,th{
 <div id="reader"></div>
 
 <label>Barcode</label>
-<input id="barcode" readonly>
+<input id="barcode" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
 
 <label>Bestand</label>
-<input id="bestand" type="number" min="0">
+<input id="bestand" type="number" min="0" disabled>
 
 <button onclick="hinzufuegen()">
     Hinzufügen
@@ -91,10 +91,13 @@ function hinzufuegen(){
     const barcode =
         document.getElementById("barcode").value.trim();
 
-    const bestand =
-        Number(document.getElementById("bestand").value);
+    const bestandEingabe =
+        document.getElementById("bestand").value;
 
-    if(!barcode || isNaN(bestand)){
+    const bestand =
+        Number(bestandEingabe);
+
+    if(!/^\d{8}$/.test(barcode) || bestandEingabe === "" || isNaN(bestand)){
         return;
     }
 
@@ -118,7 +121,8 @@ function hinzufuegen(){
     document.getElementById("barcode").value = "";
     document.getElementById("bestand").value = "";
     bestandAusstehend = false;
-    html5QrCode.resume();
+    document.getElementById("bestand").disabled = true;
+    scannerFreigeben();
 }
 
 function anzeigeAktualisieren(){
@@ -196,17 +200,72 @@ document
 
 });
 
+function scannerSperren(){
+
+    if(html5QrCode.getState() === Html5QrcodeScannerState.SCANNING){
+        html5QrCode.pause(true);
+    }
+}
+
+function scannerFreigeben(){
+
+    if(html5QrCode.getState() === Html5QrcodeScannerState.PAUSED){
+        html5QrCode.resume();
+    }
+}
+
+document
+.getElementById("barcode")
+.addEventListener("focus", function(){
+    scannerSperren();
+});
+
+document
+.getElementById("barcode")
+.addEventListener("input", function(){
+
+    this.value = this.value.replace(/\D/g, "").slice(0, 8);
+
+    if(/^\d{8}$/.test(this.value)){
+        bestandAusstehend = true;
+        const bestandFeld = document.getElementById("bestand");
+        bestandFeld.disabled = false;
+        bestandFeld.focus();
+    }
+    else{
+        bestandAusstehend = false;
+        document.getElementById("bestand").disabled = true;
+    }
+});
+
+document
+.getElementById("barcode")
+.addEventListener("blur", function(){
+
+    if(!bestandAusstehend){
+        scannerFreigeben();
+    }
+});
+
 function scannerErfolg(decodedText){
 
     if(bestandAusstehend){
         return;
     }
 
-    bestandAusstehend = true;
-    html5QrCode.pause(true);
-    document.getElementById("barcode").value = decodedText;
+    const barcode = decodedText.trim();
 
-    document.getElementById("bestand").focus();
+    if(!/^\d{8}$/.test(barcode)){
+        return;
+    }
+
+    bestandAusstehend = true;
+    scannerSperren();
+    document.getElementById("barcode").value = barcode;
+
+    const bestandFeld = document.getElementById("bestand");
+    bestandFeld.disabled = false;
+    bestandFeld.focus();
 }
 
 const html5QrCode =
@@ -224,7 +283,12 @@ html5QrCode.start(
         qrbox: 250,
     },
     scannerErfolg
-).catch(err => {
+).then(() => {
+    if(bestandAusstehend ||
+        document.activeElement === document.getElementById("barcode")){
+        scannerSperren();
+    }
+}).catch(err => {
     console.error(err);
 });
 
