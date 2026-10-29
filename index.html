@@ -179,6 +179,14 @@ function csvExport(){
 
     });
 
+    const jetzt = new Date();
+    const zeitstempel =
+        jetzt.getFullYear() + "_" +
+        String(jetzt.getMonth() + 1).padStart(2, "0") + "_" +
+        String(jetzt.getDate()).padStart(2, "0") + "_" +
+        String(jetzt.getHours()).padStart(2, "0") + "h_" +
+        String(jetzt.getMinutes()).padStart(2, "0") + "min";
+
     const blob =
         new Blob([csv], {
             type: "text/csv;charset=utf-8;"
@@ -191,7 +199,7 @@ function csvExport(){
         URL.createObjectURL(blob);
 
     link.download =
-        "bestand.csv";
+        "bestand_" + zeitstempel + ".csv";
 
     link.click();
 
