@@ -62,6 +62,12 @@ td,th{
     CSV Export
 </button>
 
+<button id="lichtButton" type="button" disabled>
+    Licht nicht verfügbar
+</button>
+
+<span id="lichtStatus" aria-live="polite"></span>
+
 <table>
     <thead>
         <tr>
@@ -85,6 +91,8 @@ let artikel = JSON.parse(localStorage.getItem("artikel")) || [];
 anzeigeAktualisieren();
 
 let bestandAusstehend = false;
+let blitzlicht = null;
+let lichtEingeschaltet = false;
 
 function hinzufuegen(){
 
@@ -214,6 +222,39 @@ function scannerFreigeben(){
     }
 }
 
+async function lichtUmschalten(){
+
+    if(!blitzlicht){
+        return;
+    }
+
+    const neuerStatus = !lichtEingeschaltet;
+    const lichtButton = document.getElementById("lichtButton");
+    const lichtStatus = document.getElementById("lichtStatus");
+    lichtButton.disabled = true;
+    lichtStatus.textContent = "";
+
+    try{
+        await blitzlicht.apply(neuerStatus);
+        lichtEingeschaltet = neuerStatus;
+        lichtButton.textContent = lichtEingeschaltet
+            ? "Licht ausschalten"
+            : "Licht einschalten";
+        lichtButton.setAttribute("aria-pressed", String(lichtEingeschaltet));
+    }
+    catch(err){
+        console.error("Kameralicht konnte nicht geändert werden:", err);
+        lichtStatus.textContent = "Kameralicht konnte nicht geändert werden.";
+    }
+    finally{
+        lichtButton.disabled = false;
+    }
+}
+
+document
+.getElementById("lichtButton")
+.addEventListener("click", lichtUmschalten);
+
 document
 .getElementById("barcode")
 .addEventListener("focus", function(){
@@ -284,6 +325,24 @@ html5QrCode.start(
     },
     scannerErfolg
 ).then(() => {
+    const lichtButton = document.getElementById("lichtButton");
+    const lichtStatus = document.getElementById("lichtStatus");
+    blitzlicht = html5QrCode
+        .getRunningTrackCameraCapabilities()
+        .torchFeature();
+
+    if(blitzlicht.isSupported()){
+        lichtEingeschaltet = blitzlicht.value() === true;
+        lichtButton.disabled = false;
+        lichtButton.textContent = lichtEingeschaltet
+            ? "Licht ausschalten"
+            : "Licht einschalten";
+        lichtButton.setAttribute("aria-pressed", String(lichtEingeschaltet));
+    }
+    else{
+        lichtStatus.textContent = "Dieses Gerät unterstützt kein Kameralicht.";
+    }
+
     if(bestandAusstehend ||
         document.activeElement === document.getElementById("barcode")){
         scannerSperren();
