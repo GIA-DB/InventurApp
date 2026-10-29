@@ -123,31 +123,35 @@ function hinzufuegen(){
 
 function anzeigeAktualisieren(){
 
-    let html = "";
+    const daten =
+        document.getElementById("daten");
 
-    artikel.forEach(a => {
+    daten.replaceChildren();
 
-        html += `
-        <tr>
-            <td>${a.barcode}</td>
-            <td>${a.bestand}</td>
-            <td>
-                <button onclick="loeschen('${a.barcode}')">
-                    X
-                </button>
-            </td>
-        </tr>
-        `;
+    artikel.forEach((a, index) => {
 
+        const zeile = document.createElement("tr");
+        const barcodeZelle = document.createElement("td");
+        const bestandZelle = document.createElement("td");
+        const aktionZelle = document.createElement("td");
+        const loeschenButton = document.createElement("button");
+
+        barcodeZelle.textContent = a.barcode;
+        bestandZelle.textContent = a.bestand;
+        loeschenButton.textContent = "Löschen";
+        loeschenButton.addEventListener("click", () => loeschen(index));
+
+        aktionZelle.appendChild(loeschenButton);
+        zeile.append(barcodeZelle, bestandZelle, aktionZelle);
+        daten.appendChild(zeile);
     });
-
-    document.getElementById("daten").innerHTML = html;
 }
 
 function loeschen(index){
 
     artikel.splice(index, 1);
 
+    localStorage.setItem("artikel", JSON.stringify(artikel));
     anzeigeAktualisieren();
 }
 
