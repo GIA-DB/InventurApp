@@ -80,7 +80,10 @@ td,th{
 
 <script>
 
-let artikel = [];
+let artikel = JSON.parse(localStorage.getItem("artikel")) || [];
+
+anzeigeAktualisieren();
+
 let bestandAusstehend = false;
 
 function hinzufuegen(){
@@ -108,6 +111,8 @@ function hinzufuegen(){
         });
     }
 
+    localStorage.setItem("artikel", JSON.stringify(artikel));
+    
     anzeigeAktualisieren();
 
     document.getElementById("barcode").value = "";
