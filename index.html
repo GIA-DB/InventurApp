@@ -35,8 +35,11 @@ td,th{
 }
 
 #reader{
+    position:relative;
     width:100%;
     max-width:400px;
+    aspect-ratio:1;
+    overflow:hidden;
 }
 
 #csvVorLoeschen{
@@ -45,9 +48,10 @@ td,th{
 }
 
 #reader__scan_region{
-    position:relative;
+    position:absolute;
+    inset:0;
     width:100% !important;
-    aspect-ratio:1;
+    height:100% !important;
     overflow:hidden;
     box-sizing:border-box;
 }
@@ -353,22 +357,6 @@ async function lichtUmschalten(){
 document
 .getElementById("lichtButton")
 .addEventListener("click", lichtUmschalten);
-
-function kameraAnsichtAnpassen(){
-
-    const scanRegion = document.getElementById("reader__scan_region");
-
-    if(scanRegion){
-        scanRegion.style.setProperty(
-            "height",
-            scanRegion.clientWidth + "px",
-            "important"
-        );
-    }
-}
-window.addEventListener("resize", kameraAnsichtAnpassen);
-window.addEventListener("resize", kameraAnsichtAnpassen);
-
 document
 .getElementById("barcode")
 .addEventListener("focus", function(){
@@ -450,8 +438,6 @@ html5QrCode.start(
     else{
         lichtStatus.textContent = "Dieses Gerät unterstützt kein Kameralicht.";
     }
-
-    kameraAnsichtAnpassen();
 
     if(bestandAusstehend ||
         document.activeElement === document.getElementById("barcode")){
