@@ -80,6 +80,7 @@ td,th{
 <script>
 
 let artikel = [];
+let bestandAusstehend = false;
 
 function hinzufuegen(){
 
@@ -110,6 +111,8 @@ function hinzufuegen(){
 
     document.getElementById("barcode").value = "";
     document.getElementById("bestand").value = "";
+    bestandAusstehend = false;
+    html5QrCode.resume();
 }
 
 function anzeigeAktualisieren(){
@@ -173,6 +176,12 @@ document
 
 function scannerErfolg(decodedText){
 
+    if(bestandAusstehend){
+        return;
+    }
+
+    bestandAusstehend = true;
+    html5QrCode.pause(true);
     document.getElementById("barcode").value = decodedText;
 
     document.getElementById("bestand").focus();
