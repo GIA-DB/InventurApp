@@ -67,6 +67,7 @@ td,th{
         <tr>
             <th>Barcode</th>
             <th>Bestand</th>
+            <th>Aktion</th>
         </tr>
     </thead>
 
@@ -125,12 +126,24 @@ function anzeigeAktualisieren(){
         <tr>
             <td>${a.barcode}</td>
             <td>${a.bestand}</td>
+            <td>
+                <button onclick="loeschen('${a.barcode}')">
+                    X
+                </button>
+            </td>
         </tr>
         `;
 
     });
 
     document.getElementById("daten").innerHTML = html;
+}
+
+function loeschen(index){
+
+    artikel.splice(index, 1);
+
+    anzeigeAktualisieren();
 }
 
 function csvExport(){
