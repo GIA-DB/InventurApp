@@ -49,14 +49,21 @@ td,th{
 }
 
 #bestandHinweis{
-    width:fit-content;
-    max-width:100%;
+    position:absolute;
+    top:50%;
+    left:50%;
+    z-index:2;
+    width:90%;
+    max-width:calc(100% - 24px);
     padding:8px 12px;
-    margin:0 0 10px;
+    margin:0;
     box-sizing:border-box;
-    background:#f1f1f1;
+    transform:translate(-50%, -50%);
+    background:rgba(255,255,255,0.9);
     color:#333;
     border-radius:4px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.35);
+    pointer-events:none;
 }
 
 #csvVorLoeschen{
@@ -76,8 +83,9 @@ td,th{
 
 <label>Barcode scannen</label>
 
-<p id="bestandHinweis" role="status" aria-live="polite" hidden></p>
-<div id="reader"></div>
+<div id="reader">
+    <p id="bestandHinweis" role="status" aria-live="polite" hidden></p>
+</div>
 
 <label>Barcode</label>
 <input id="barcode" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
@@ -144,19 +152,19 @@ let bestandAusstehend = false;
 let blitzlicht = null;
 let lichtEingeschaltet = false;
 let bestandHinweisTimeout = null;
+const bestandHinweis =
+    document.getElementById("bestandHinweis");
 
 function bestandHinweisAnzeigen(bestand){
 
-    const hinweis = document.getElementById("bestandHinweis");
-
     clearTimeout(bestandHinweisTimeout);
-    hinweis.textContent =
+    bestandHinweis.textContent =
         "Bereits erfasst mit Bestand " + bestand +
         ". Das Bestandsfeld wurde vorausgefüllt.";
-    hinweis.hidden = false;
+    bestandHinweis.hidden = false;
     bestandHinweisTimeout = setTimeout(() => {
-        hinweis.hidden = true;
-        hinweis.textContent = "";
+        bestandHinweis.hidden = true;
+        bestandHinweis.textContent = "";
     }, 5000);
 }
 
@@ -164,9 +172,8 @@ function bestandHinweisAusblenden(){
 
     clearTimeout(bestandHinweisTimeout);
     bestandHinweisTimeout = null;
-    const hinweis = document.getElementById("bestandHinweis");
-    hinweis.hidden = true;
-    hinweis.textContent = "";
+    bestandHinweis.hidden = true;
+    bestandHinweis.textContent = "";
 }
 
 function hinzufuegen(){
@@ -553,6 +560,7 @@ html5QrCode.start(
 ).then(() => {
     const lichtButton = document.getElementById("lichtButton");
     const lichtStatus = document.getElementById("lichtStatus");
+    readerElement.appendChild(bestandHinweis);
     const video = document.querySelector("#reader video");
 
     if(video){
