@@ -42,6 +42,12 @@ td,th{
     overflow:hidden;
 }
 
+#kameraDiagnose{
+    font-size:0.75em;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+}
+
 #csvVorLoeschen{
     width:auto;
     margin:0 8px 0 0;
@@ -74,6 +80,7 @@ td,th{
 
 <div id="reader"></div>
 <p id="kameraDimensionen" aria-live="polite"></p>
+<pre id="kameraDiagnose"></pre>
 
 <label>Barcode</label>
 <input id="barcode" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
@@ -407,9 +414,18 @@ function scannerErfolg(decodedText){
 }
 
 let qrboxDimensions = null;
+let qrboxViewfinderDimensions = null;
 
 function kameraDimensionenAktualisieren(video){
 
+    const viewfinder =
+        document.getElementById("reader");
+    const frameRect =
+        viewfinder.getBoundingClientRect();
+    const videoRect =
+        video.getBoundingClientRect();
+    const videoStyle =
+        window.getComputedStyle(video);
     const videoDimensionen = video.videoWidth && video.videoHeight
         ? video.videoWidth + " × " + video.videoHeight + " px"
         : "nicht verfügbar";
@@ -420,9 +436,30 @@ function kameraDimensionenAktualisieren(video){
     document.getElementById("kameraDimensionen").textContent =
         "Kamerafeed: " + videoDimensionen +
         " | QR-Box: " + qrboxText;
+
+    document.getElementById("kameraDiagnose").textContent =
+        "Rahmen (CSS): " +
+            viewfinder.clientWidth + " × " + viewfinder.clientHeight + " px\n" +
+        "QrDimensionFunction: " +
+            (qrboxViewfinderDimensions
+                ? qrboxViewfinderDimensions.width + " × " +
+                    qrboxViewfinderDimensions.height + " px"
+                : "nicht aufgerufen") + "\n" +
+        "Video (CSS): " + video.clientWidth + " × " + video.clientHeight +
+            " px; Position im Rahmen: " +
+            Math.round(videoRect.left - frameRect.left) + ", " +
+            Math.round(videoRect.top - frameRect.top) + " px\n" +
+        "object-fit: " + videoStyle.objectFit +
+            "; #reader__scan_region vorhanden: " +
+            Boolean(document.getElementById("reader__scan_region"));
 }
 
 function qrboxFunction(viewfinderWidth, viewfinderHeight){
+
+    qrboxViewfinderDimensions = {
+        width: viewfinderWidth,
+        height: viewfinderHeight,
+    };
 
     const viewfinder =
         document.getElementById("reader");
