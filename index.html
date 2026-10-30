@@ -114,7 +114,7 @@ td,th{
     <p id="bestandHinweis" role="status" aria-live="polite" hidden></p>
 </div>
 
-<label>Artikel (Barcode)</label>
+<label>Artikelnummer</label>
 <input id="barcode" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
 
 <label>Bestand</label>
@@ -139,7 +139,7 @@ td,th{
 <table>
     <thead>
         <tr>
-            <th>Artikel</th>
+            <th>Artikelnummer</th>
             <th>Bestand</th>
             <th>Aktion</th>
         </tr>
@@ -367,7 +367,7 @@ function loeschen(index){
 
 function csvExport(){
 
-    let csv = "Artikel;Bestand\n";
+    let csv = "Artikelnummer;Bestand\n";
 
     artikel.forEach(a => {
 
