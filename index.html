@@ -35,12 +35,20 @@ td,th{
 }
 
 #reader{
+    position:relative;
+    width:100%;
     max-width:400px;
+    aspect-ratio:16/9;
+    overflow:hidden;
 }
 
 #csvVorLoeschen{
     width:auto;
     margin:0 8px 0 0;
+}
+
+#reader > video{
+    position:absolute;
 }
 </style>
 </head>
@@ -385,6 +393,106 @@ function scannerErfolg(decodedText){
     bestandseingabeVorbereiten(barcode);
 }
 
+function kameraLayoutAktualisieren(video){
+
+    const viewfinder =
+        document.getElementById("reader");
+    const frameWidth =
+        viewfinder.clientWidth;
+    const frameHeight =
+        viewfinder.clientHeight;
+    const videoWidth =
+        video.videoWidth;
+    const videoHeight =
+        video.videoHeight;
+
+    if(!frameWidth || !frameHeight || !videoWidth || !videoHeight){
+        return;
+    }
+
+    const scale =
+        Math.max(frameWidth / videoWidth, frameHeight / videoHeight);
+    const renderedWidth =
+        videoWidth * scale;
+    const renderedHeight =
+        videoHeight * scale;
+    const offsetX =
+        (frameWidth - renderedWidth) / 2;
+    const offsetY =
+        (frameHeight - renderedHeight) / 2;
+
+    video.style.position = "absolute";
+    video.style.width = renderedWidth + "px";
+    video.style.height = renderedHeight + "px";
+    video.style.left = offsetX + "px";
+    video.style.top = offsetY + "px";
+    video.style.right = "auto";
+    video.style.bottom = "auto";
+    video.style.objectFit = "fill";
+
+    const qrShadedRegion =
+        document.getElementById("qr-shaded-region");
+
+    if(qrShadedRegion){
+        qrShadedRegion.style.left = offsetX + "px";
+        qrShadedRegion.style.top = offsetY + "px";
+        qrShadedRegion.style.right = "auto";
+        qrShadedRegion.style.bottom = "auto";
+        qrShadedRegion.style.width = renderedWidth + "px";
+        qrShadedRegion.style.height = renderedHeight + "px";
+    }
+}
+
+function qrboxFunction(viewfinderWidth, viewfinderHeight){
+
+    const viewfinder =
+        document.getElementById("reader");
+    const visibleWidth =
+        viewfinder.clientWidth || viewfinderWidth;
+    const visibleHeight =
+        viewfinder.clientHeight || viewfinderHeight;
+    return {
+        width: Math.floor(visibleWidth * 0.8),
+        height: Math.floor(visibleHeight * 0.8),
+    };
+}
+
+const readerElement =
+    document.getElementById("reader");
+const beobachteteVideos =
+    new WeakSet();
+
+const kameraLayoutBeobachter =
+    new MutationObserver(() => {
+        const video = readerElement.querySelector("video");
+
+        if(!video){
+            return;
+        }
+
+        if(!beobachteteVideos.has(video)){
+            beobachteteVideos.add(video);
+            video.addEventListener("loadedmetadata", () =>
+                kameraLayoutAktualisieren(video));
+            video.addEventListener("resize", () =>
+                kameraLayoutAktualisieren(video));
+        }
+
+        kameraLayoutAktualisieren(video);
+    });
+
+kameraLayoutBeobachter.observe(readerElement, {
+    childList: true,
+});
+
+window.addEventListener("resize", function(){
+    const video = readerElement.querySelector("video");
+
+    if(video){
+        kameraLayoutAktualisieren(video);
+    }
+});
+
 const html5QrCode =
     new Html5Qrcode("reader", {
         formatsToSupport: [
@@ -397,12 +505,18 @@ html5QrCode.start(
     { facingMode: "environment" },
     {
         fps: 20,
-        qrbox: 250,
+        qrbox: qrboxFunction,
     },
     scannerErfolg
 ).then(() => {
     const lichtButton = document.getElementById("lichtButton");
     const lichtStatus = document.getElementById("lichtStatus");
+    const video = document.querySelector("#reader video");
+
+    if(video){
+        kameraLayoutAktualisieren(video);
+    }
+
     blitzlicht = html5QrCode
         .getRunningTrackCameraCapabilities()
         .torchFeature();
