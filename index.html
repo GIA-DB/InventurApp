@@ -73,6 +73,7 @@ td,th{
 <h2>Barcode scannen</h2>
 
 <div id="reader"></div>
+<p id="kameraDimensionen" aria-live="polite"></p>
 
 <label>Barcode</label>
 <input id="barcode" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
@@ -405,15 +406,33 @@ function scannerErfolg(decodedText){
     bestandseingabeVorbereiten(barcode);
 }
 
+let qrboxDimensions = null;
+
+function kameraDimensionenAktualisieren(video){
+
+    const videoDimensionen = video.videoWidth && video.videoHeight
+        ? video.videoWidth + " × " + video.videoHeight + " px"
+        : "nicht verfügbar";
+    const qrboxText = qrboxDimensions
+        ? qrboxDimensions.width + " × " + qrboxDimensions.height + " px"
+        : "nicht verfügbar";
+
+    document.getElementById("kameraDimensionen").textContent =
+        "Kamerafeed: " + videoDimensionen +
+        " | QR-Box: " + qrboxText;
+}
+
 function qrboxFunction(viewfinderWidth, viewfinderHeight){
 
     const qrboxSize =
         Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
 
-    return {
+    qrboxDimensions = {
         width: qrboxSize,
         height: qrboxSize,
     };
+
+    return qrboxDimensions;
 }
 
 const html5QrCode =
@@ -434,6 +453,16 @@ html5QrCode.start(
 ).then(() => {
     const lichtButton = document.getElementById("lichtButton");
     const lichtStatus = document.getElementById("lichtStatus");
+    const video = document.querySelector("#reader video");
+
+    if(video){
+        kameraDimensionenAktualisieren(video);
+        video.addEventListener("loadedmetadata", () =>
+            kameraDimensionenAktualisieren(video));
+        video.addEventListener("resize", () =>
+            kameraDimensionenAktualisieren(video));
+    }
+
     blitzlicht = html5QrCode
         .getRunningTrackCameraCapabilities()
         .torchFeature();
