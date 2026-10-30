@@ -37,6 +37,12 @@ button{
     align-items:center;
 }
 
+#hinzufuegenButton{
+    width:100%;
+    box-sizing:border-box;
+    margin:5px 0;
+}
+
 table{
     width:100%;
     border-collapse:collapse;
@@ -121,11 +127,11 @@ td,th{
 <label>Bestand</label>
 <input id="bestand" type="number" min="0" disabled>
 
-<div id="aktionsButtons">
-<button onclick="hinzufuegen()">
+<button id="hinzufuegenButton" type="button" onclick="hinzufuegen()">
     Hinzufügen
 </button>
 
+<div id="aktionsButtons">
 <button onclick="csvExport()">
     CSV Export
 </button>
