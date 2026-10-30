@@ -707,10 +707,6 @@ html5QrCode.start(
             : "Licht einschalten";
         lichtButton.setAttribute("aria-pressed", String(lichtEingeschaltet));
     }
-    else{
-        lichtStatus.textContent = "Dieses Gerät unterstützt kein Kameralicht.";
-    }
-
     if(bestandAusstehend ||
         document.activeElement === document.getElementById("barcode")){
         scannerSperren();
