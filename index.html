@@ -405,6 +405,17 @@ function scannerErfolg(decodedText){
     bestandseingabeVorbereiten(barcode);
 }
 
+function qrboxFunction(viewfinderWidth, viewfinderHeight){
+
+    const qrboxSize =
+        Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+
+    return {
+        width: qrboxSize,
+        height: qrboxSize,
+    };
+}
+
 const html5QrCode =
     new Html5Qrcode("reader", {
         formatsToSupport: [
@@ -417,10 +428,7 @@ html5QrCode.start(
     { facingMode: "environment" },
     {
         fps: 20,
-        qrbox: {
-            width: 350,
-            height: 250,
-        },
+        qrbox: qrboxFunction,
     },
     scannerErfolg
 ).then(() => {
