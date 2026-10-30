@@ -48,6 +48,17 @@ td,th{
     margin-top:10px;
 }
 
+#bestandHinweis{
+    width:fit-content;
+    max-width:100%;
+    padding:8px 12px;
+    margin:0 0 10px;
+    box-sizing:border-box;
+    background:#f1f1f1;
+    color:#333;
+    border-radius:4px;
+}
+
 #csvVorLoeschen{
     width:auto;
     margin:0 8px 0 0;
@@ -65,6 +76,7 @@ td,th{
 
 <label>Barcode scannen</label>
 
+<p id="bestandHinweis" role="status" aria-live="polite" hidden></p>
 <div id="reader"></div>
 
 <label>Barcode</label>
@@ -131,6 +143,31 @@ anzeigeAktualisieren();
 let bestandAusstehend = false;
 let blitzlicht = null;
 let lichtEingeschaltet = false;
+let bestandHinweisTimeout = null;
+
+function bestandHinweisAnzeigen(bestand){
+
+    const hinweis = document.getElementById("bestandHinweis");
+
+    clearTimeout(bestandHinweisTimeout);
+    hinweis.textContent =
+        "Bereits erfasst mit Bestand " + bestand +
+        ". Das Bestandsfeld wurde vorausgefüllt.";
+    hinweis.hidden = false;
+    bestandHinweisTimeout = setTimeout(() => {
+        hinweis.hidden = true;
+        hinweis.textContent = "";
+    }, 5000);
+}
+
+function bestandHinweisAusblenden(){
+
+    clearTimeout(bestandHinweisTimeout);
+    bestandHinweisTimeout = null;
+    const hinweis = document.getElementById("bestandHinweis");
+    hinweis.hidden = true;
+    hinweis.textContent = "";
+}
 
 function hinzufuegen(){
 
@@ -166,6 +203,7 @@ function hinzufuegen(){
 
     document.getElementById("barcode").value = "";
     document.getElementById("bestand").value = "";
+    bestandHinweisAusblenden();
     bestandAusstehend = false;
     document.getElementById("bestand").disabled = true;
     scannerFreigeben();
@@ -306,6 +344,12 @@ function bestandseingabeVorbereiten(barcode){
     const vorhanden = artikel.find(a => a.barcode === barcode);
     const bestandFeld = document.getElementById("bestand");
     bestandFeld.value = vorhanden ? vorhanden.bestand : "";
+    if(vorhanden){
+        bestandHinweisAnzeigen(vorhanden.bestand);
+    }
+    else{
+        bestandHinweisAusblenden();
+    }
     bestandFeld.disabled = false;
     bestandFeld.focus();
 }
@@ -359,6 +403,7 @@ document
     }
     else{
         bestandAusstehend = false;
+        bestandHinweisAusblenden();
         document.getElementById("bestand").disabled = true;
     }
 });
