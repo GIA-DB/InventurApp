@@ -125,7 +125,7 @@ td,th{
 <input id="barcode" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
 
 <label>Bestand</label>
-<input id="bestand" type="number" min="0" disabled>
+<input id="bestand" type="number" min="0" step="1" required disabled>
 
 <button id="hinzufuegenButton" type="button" onclick="hinzufuegen()">
     Hinzufügen
@@ -305,13 +305,26 @@ function hinzufuegen(){
     const barcode =
         document.getElementById("barcode").value.trim();
 
+    const bestandFeld =
+        document.getElementById("bestand");
     const bestandEingabe =
-        document.getElementById("bestand").value;
+        bestandFeld.value;
 
     const bestand =
         Number(bestandEingabe);
 
-    if(!/^\d{8}$/.test(barcode) || bestandEingabe === "" || isNaN(bestand)){
+    if(!/^\d{8}$/.test(barcode)){
+        return;
+    }
+
+    if(!bestandFeld.checkValidity() ||
+        !Number.isSafeInteger(bestand) ||
+        bestand < 0){
+        bestandFeld.setCustomValidity(
+            "Bitte geben Sie eine ganze Zahl ab 0 ein."
+        );
+        bestandFeld.reportValidity();
+        bestandFeld.setCustomValidity("");
         return;
     }
 
