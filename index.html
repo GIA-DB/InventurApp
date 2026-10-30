@@ -42,7 +42,8 @@ td,th{
     overflow:hidden;
 }
 
-#kameraDiagnose{
+#kameraDiagnose,
+#kameraDimensionen{
     font-size:0.75em;
     white-space:pre-wrap;
     overflow-wrap:anywhere;
@@ -473,8 +474,8 @@ function kameraDimensionenAktualisieren(video){
         : "nicht verfügbar";
 
     document.getElementById("kameraDimensionen").textContent =
-        "Kamerafeed: " + videoDimensionen +
-        " | QR-Box: " + qrboxText;
+        "Kamerafeed: " + videoDimensionen + "\n" +
+        "QR-Box: " + qrboxText;
 
     document.getElementById("kameraDiagnose").textContent =
         "Rahmen (CSS): " +
