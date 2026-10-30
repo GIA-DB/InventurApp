@@ -74,6 +74,22 @@ td,th{
 #reader > video{
     position:absolute;
 }
+
+#statistikBereich{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:20px;
+    font-size:0.75em;
+}
+
+#statistikAnzeige{
+    margin:0;
+}
+
+#statistikZuruecksetzenButton{
+    flex-shrink:0;
+}
 </style>
 </head>
 
@@ -140,13 +156,98 @@ td,th{
     </form>
 </dialog>
 
+<div id="statistikBereich">
+    <pre id="statistikAnzeige" aria-live="polite"></pre>
+    <button id="statistikZuruecksetzenButton" type="button">
+        Statistik zurücksetzen
+    </button>
+</div>
+
 <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script>
 
 let artikel = JSON.parse(localStorage.getItem("artikel")) || [];
 
+const statistikSpeicherSchluessel = "inventurStatistik";
+
+function statistikAusArtikelnErstellen(){
+
+    const erfassteBarcodes = [];
+    const bestandJeBarcode = {};
+    let gesamtbestand = 0;
+
+    artikel.forEach(a => {
+        const bestand = Number(a.bestand);
+
+        if(!Number.isFinite(bestand)){
+            throw new Error("Ungültiger gespeicherter Bestand für Barcode " + a.barcode);
+        }
+
+        gesamtbestand += bestand;
+        bestandJeBarcode[a.barcode] =
+            (bestandJeBarcode[a.barcode] || 0) + bestand;
+
+        if(!erfassteBarcodes.includes(a.barcode)){
+            erfassteBarcodes.push(a.barcode);
+        }
+    });
+
+    return {
+        artikel: erfassteBarcodes.length,
+        gesamtbestand: gesamtbestand,
+        erfassteBarcodes: erfassteBarcodes,
+        bestandJeBarcode: bestandJeBarcode,
+    };
+}
+
+let statistik = JSON.parse(
+    localStorage.getItem(statistikSpeicherSchluessel)
+);
+
+if(statistik === null){
+    statistik = statistikAusArtikelnErstellen();
+    localStorage.setItem(
+        statistikSpeicherSchluessel,
+        JSON.stringify(statistik)
+    );
+}
+
 anzeigeAktualisieren();
+statistikAnzeigeAktualisieren();
+
+function statistikSpeichern(){
+
+    localStorage.setItem(
+        statistikSpeicherSchluessel,
+        JSON.stringify(statistik)
+    );
+    statistikAnzeigeAktualisieren();
+}
+
+function statistikAnzeigeAktualisieren(){
+
+    const format = new Intl.NumberFormat("de-DE");
+    document.getElementById("statistikAnzeige").textContent =
+        "Artikel: " + format.format(statistik.artikel) + "\n" +
+        "Gesamtbestand: " + format.format(statistik.gesamtbestand);
+}
+
+function statistikErfassen(barcode, bestand){
+
+    const vorherigerBestand =
+        statistik.bestandJeBarcode[barcode] || 0;
+
+    statistik.gesamtbestand += bestand - vorherigerBestand;
+    statistik.bestandJeBarcode[barcode] = bestand;
+
+    if(!statistik.erfassteBarcodes.includes(barcode)){
+        statistik.erfassteBarcodes.push(barcode);
+        statistik.artikel += 1;
+    }
+
+    statistikSpeichern();
+}
 
 let bestandAusstehend = false;
 let blitzlicht = null;
@@ -204,6 +305,7 @@ function hinzufuegen(){
         });
     }
 
+    statistikErfassen(barcode, bestand);
     localStorage.setItem("artikel", JSON.stringify(artikel));
     
     anzeigeAktualisieren();
@@ -318,6 +420,18 @@ document
     localStorage.removeItem("artikel");
     anzeigeAktualisieren();
     alleEintraegeLoeschenDialog.close();
+});
+
+document
+.getElementById("statistikZuruecksetzenButton")
+.addEventListener("click", function(){
+    statistik = {
+        artikel: 0,
+        gesamtbestand: 0,
+        erfassteBarcodes: [],
+        bestandJeBarcode: {},
+    };
+    statistikSpeichern();
 });
 
 document
