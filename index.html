@@ -273,6 +273,9 @@ let bestandAusstehend = false;
 let blitzlicht = null;
 let lichtEingeschaltet = false;
 let bestandHinweisTimeout = null;
+let scannerFreigabeTimeout = null;
+let scannerSperrzeitAktiv = false;
+const scannerSperrzeitDauer = 1000;
 const bestandHinweis =
     document.getElementById("bestandHinweis");
 
@@ -335,7 +338,7 @@ function hinzufuegen(){
     bestandHinweisAusblenden();
     bestandAusstehend = false;
     document.getElementById("bestand").disabled = true;
-    scannerFreigeben();
+    scannerFreigebenNachErfassung();
 }
 
 function anzeigeAktualisieren(){
@@ -464,18 +467,44 @@ document
 
 });
 
-function scannerSperren(){
+function scannerSperren(videoAnhalten = true){
 
     if(html5QrCode.getState() === Html5QrcodeScannerState.SCANNING){
-        html5QrCode.pause(true);
+        html5QrCode.pause(videoAnhalten);
     }
 }
 
 function scannerFreigeben(){
 
+    if(scannerSperrzeitAktiv){
+        return;
+    }
+
     if(html5QrCode.getState() === Html5QrcodeScannerState.PAUSED){
         html5QrCode.resume();
     }
+}
+
+function scannerFreigebenNachErfassung(){
+
+    clearTimeout(scannerFreigabeTimeout);
+    scannerSperrzeitAktiv = true;
+
+    if(html5QrCode.getState() === Html5QrcodeScannerState.PAUSED){
+        html5QrCode.resume();
+    }
+
+    scannerSperren(false);
+
+    scannerFreigabeTimeout = setTimeout(() => {
+        scannerFreigabeTimeout = null;
+        scannerSperrzeitAktiv = false;
+
+        if(!bestandAusstehend &&
+            document.activeElement !== document.getElementById("barcode")){
+            scannerFreigeben();
+        }
+    }, scannerSperrzeitDauer);
 }
 
 function bestandseingabeVorbereiten(barcode){
@@ -560,7 +589,7 @@ document
 
 function scannerErfolg(decodedText){
 
-    if(bestandAusstehend){
+    if(bestandAusstehend || scannerSperrzeitAktiv){
         return;
     }
 
@@ -713,7 +742,10 @@ html5QrCode.start(
             : "Licht einschalten";
         lichtButton.setAttribute("aria-pressed", String(lichtEingeschaltet));
     }
-    if(bestandAusstehend ||
+    if(scannerSperrzeitAktiv){
+        scannerSperren(false);
+    }
+    else if(bestandAusstehend ||
         document.activeElement === document.getElementById("barcode")){
         scannerSperren();
     }
