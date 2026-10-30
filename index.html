@@ -249,8 +249,8 @@ function statistikAnzeigeAktualisieren(){
 
     const format = new Intl.NumberFormat("de-DE");
     document.getElementById("statistikAnzeige").textContent =
-        "Artikel: " + format.format(statistik.artikel) + "\n" +
-        "Gesamtbestand: " + format.format(statistik.gesamtbestand);
+        "Erfasste Artikel: " + format.format(statistik.artikel) + "\n" +
+        "Erfasster Gesamtbestand: " + format.format(statistik.gesamtbestand);
 }
 
 function statistikErfassen(barcode, bestand){
