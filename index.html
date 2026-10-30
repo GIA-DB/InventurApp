@@ -298,16 +298,8 @@ function bestandseingabeVorbereiten(barcode){
     bestandAusstehend = true;
 
     const vorhanden = artikel.find(a => a.barcode === barcode);
-
-    if(vorhanden && Number(vorhanden.bestand) > 0){
-        alert(
-            "Für Barcode " + barcode +
-            " ist bereits ein Bestand von " + vorhanden.bestand +
-            " vorhanden. Der neue Bestand ersetzt diesen Wert."
-        );
-    }
-
     const bestandFeld = document.getElementById("bestand");
+    bestandFeld.value = vorhanden ? vorhanden.bestand : "";
     bestandFeld.disabled = false;
     bestandFeld.focus();
 }
