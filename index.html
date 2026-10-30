@@ -424,12 +424,15 @@ function kameraDimensionenAktualisieren(video){
 
 function qrboxFunction(viewfinderWidth, viewfinderHeight){
 
-    const qrboxSize =
-        Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
-
+    const viewfinder =
+        document.getElementById("reader");
+    const visibleWidth =
+        viewfinder.clientWidth || viewfinderWidth;
+    const visibleHeight =
+        viewfinder.clientHeight || viewfinderHeight;
     qrboxDimensions = {
-        width: qrboxSize,
-        height: qrboxSize,
+        width: Math.floor(visibleWidth * 0.8),
+        height: Math.floor(visibleHeight * 0.85),
     };
 
     return qrboxDimensions;
