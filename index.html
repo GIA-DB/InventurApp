@@ -114,7 +114,7 @@ td,th{
     <p id="bestandHinweis" role="status" aria-live="polite" hidden></p>
 </div>
 
-<label>Barcode</label>
+<label>Artikel (Barcode)</label>
 <input id="barcode" type="text" inputmode="numeric" maxlength="8" autocomplete="off">
 
 <label>Bestand</label>
@@ -139,7 +139,7 @@ td,th{
 <table>
     <thead>
         <tr>
-            <th>Barcode</th>
+            <th>Artikel</th>
             <th>Bestand</th>
             <th>Aktion</th>
         </tr>
@@ -194,7 +194,7 @@ function statistikAusArtikelnErstellen(){
         const bestand = Number(a.bestand);
 
         if(!Number.isFinite(bestand)){
-            throw new Error("Ungültiger gespeicherter Bestand für Barcode " + a.barcode);
+            throw new Error("Ungültiger gespeicherter Bestand für Artikel " + a.barcode);
         }
 
         gesamtbestand += bestand;
@@ -367,7 +367,7 @@ function loeschen(index){
 
 function csvExport(){
 
-    let csv = "Barcode;Bestand\n";
+    let csv = "Artikel;Bestand\n";
 
     artikel.forEach(a => {
 
